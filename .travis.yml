@@ -1,13 +1,19 @@
 os:
   - linux
   - osx
+
 sudo: required
 language: cpp
 compiler:
   - gcc
   - clang
-install:
-  - make install_deps
-  - source setup.bash
+
+before_install:
+- sudo apt-get update -qq
+
 script:
-  - mkdir build && cd build && cmake .. && make && make test
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make test
