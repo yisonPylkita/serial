@@ -43,7 +43,7 @@ before_build:
   - cd ..
 
 build:
-  project: build/CPP-BoilerPlate.sln
+  project: build/serial.sln
   parallel: true
   verbosity: minimal
 
