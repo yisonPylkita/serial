@@ -1,6 +1,7 @@
 os:
   - linux
   - osx
+sudo: required
 language: cpp
 compiler:
   - gcc
@@ -9,4 +10,4 @@ install:
   - make install_deps
   - source setup.bash
 script:
-  - make && make test
+  - mkdir build && cd build && cmake .. && make && make test
