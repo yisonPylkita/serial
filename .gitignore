@@ -1,4 +1,3 @@
-.*
 .DS_Store
 *.coverage
 *.egg-info
@@ -15,9 +14,7 @@
 .svn
 build
 bin
-lib
 cpp
-*/lib/*
 installed
 patched
 wiped
@@ -32,3 +29,5 @@ doc/html
 ipch
 Debug
 Release
+cmake-build-debug/*
+.idea/*
