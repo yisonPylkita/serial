@@ -13,112 +13,22 @@
 #include <atomic>
 #include <iostream>
 #include "stl_utils.hpp"
+#include "Device.hpp"
+#include "DeviceManager.hpp"
 
 
 typedef unsigned char byte_t;
 using namespace vec::operators;
 
-bool exit_device_thread = false;
 
-//struct DeviceCommunication {
-//    /// @param[in] device_path Path to device file in OS like /dev/ttyUSB0
-//    explicit DeviceCommunication(const std::string &device_path)
-//    {
-//
-//
-//    }
-//
-//private:
-//    static int open(const std::string &device_path)
-//    {
-//        // TODO: impl this
-//        return 0;
-//    }
-//};
-
-
-namespace nlohmann {
-typedef std::map<std::string, std::string> json;
-}
-
-struct Device
-{
-    template <typename DevImpl>
-    struct DeviceImpl_CRTP
-    {
-        using Handle = std::unique_ptr<serial::Serial>;
-
-        explicit ()
-
-        static void device_loop(DevImpl *device)
-        {
-            DevImpl::device_loop_impl(device);
-        }
-    };
-
-    typedef Device * Pointer;
-//    using Instance = std::unique_ptr<Device>;
-//    using Handle = std::unique_ptr<serial::Serial>;
-    typedef std::function<Pointer(serial::Serial *)> create_instance_t;
-
-    Device(const std::string &) {}
-
-    virtual ~Device() = default;
-
-    virtual std::vector<std::string> subsystems() = 0;
-
-    virtual void process_api_request(const std::string &action, const nlohmann::json &details) = 0;
-    virtual std::optional<nlohmann::json> next_response() = 0;
-
-    virtual void device_loop() = 0;
-
-protected:
-    void set_device_handle(Handle device_handle)
-    {
-        _device_handle = std::move(device_handle);
-    }
-
-    serial::Serial * get_device_handle()
-    {
-        return _device_handle.get();
-    }
-
-    std::vector<byte_t> get_data_from_device()
-    {
-//        // TODO: check what happens when you want to read a lot of data (above 64 kB)
-//        std::vector<byte_t> dev_res;
-//        _device_handle->read(dev_res);
-//        return dev_res;
-
-        if (!_device_handle->isOpen())
-            throw std::runtime_error("Device is no longer available");
-        // TODO: probable memory fragmentation
-        std::vector<byte_t> incoming;
-        while (true) {
-            size_t read_bytes = _device_handle->read(incoming, 64);
-            if (!read_bytes)
-                break;
-            device_out_stream += incoming;
-        }
-    }
-
-    void send_data_to_device(const std::vector<byte_t> &data_to_send)
-    {
-        // TODO: check what happens when you want to send a lot of data (above 64 kB)
-        assert(_device_handle->write(data_to_send) == data_to_send.size());
-    }
-
-private:
-    Handle _device_handle;
-    std::deque<std::vector<byte_t>> device_in;
-    std::deque<byte_t> device_out_stream;
-};
 
 namespace devices {
 namespace fm30 {
 
-struct Fm30 : public Device
+struct Fm30 : public Device::DeviceImpl_CRTP<Fm30>
 {
+    typedef Device::DeviceImpl_CRTP<Fm30> BaseClass;
+
 //    explicit Fm30(std::unique_ptr<serial::Serial> s) {
 //        _device_comunication_thread = std::thread([this] (std::unique_ptr<serial::Serial> device) {
 //            while (!_exit_thread) {
@@ -170,7 +80,7 @@ struct Fm30 : public Device
 //        });
 //    }
 
-    explicit Fm30(const std::string &port_path) : Device(port_path)
+    explicit Fm30(const std::string &port_path) : BaseClass(port_path)
     {
         Device::Handle device_handle(new serial::Serial(port_path, 115200));
         device_handle->setTimeout(serial::Timeout::simpleTimeout(0)); // Async mode
@@ -249,34 +159,6 @@ private:
 
 //using is_valid_port_t = std::function<bool(Device::Pointer)>;
 using create_instance_t = std::function<Device::Pointer(const std::string &)>;
-
-struct DeviceManager
-{
-    void add_supported_device(create_instance_t create_instance)
-    {
-        _supported_devices += create_instance;
-    }
-
-    bool detect_device_and_connect(const std::string &port_path)
-    {
-//        std::lock_guard<add_remove_device> guard;
-        // check if device is supported
-        for (auto &try_create_device_instance : _supported_devices) {
-            auto device_instance = try_create_device_instance(port_path);
-            if (device_instance) {
-                _connected_devices.push_back(device_instance);
-                return true;
-            }
-
-            return false;
-        }
-    }
-
-private:
-    std::vector<create_instance_t> _supported_devices;
-//    std::mutex add_remove_device;
-    std::vector<Device::Pointer> _connected_devices;
-};
 
 using watch_devices_dir_callback_t = std::function<bool(const std::string &device_path)>;
 void watch_devices_dir(watch_devices_dir_callback_t on_new_device_detected)

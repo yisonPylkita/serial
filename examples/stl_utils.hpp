@@ -48,13 +48,13 @@ namespace vec {
             return lhs;
         }
 
-    template <typename T>
-    typename std::deque<T> operator+=(std::deque<T> &lhs, const std::vector<T> &rhs)
-    {
-        for (const auto &entry : rhs)
-            lhs.push_back(entry);
-        return lhs;
-    }
+//    template <typename T>
+//    typename std::deque<T> operator+=(std::deque<T> &lhs, const std::vector<T> &rhs)
+//    {
+//        for (const auto &entry : rhs)
+//            lhs.push_back(entry);
+//        return lhs;
+//    }
 
         template <typename T, std::size_t ArraySize>
         bool  operator==(const std::vector<T> &lhs, const std::array<T, ArraySize> &rhs)
