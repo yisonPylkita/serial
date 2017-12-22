@@ -6,10 +6,25 @@
 
 struct DeviceManager
 {
-    void add_device(DeviceThread::Instance instance) {
-        std::lock_guard<std::mutex> ml(_access_mutex);
-        const auto device_name = instance->device_name();
-        _connected_devices.emplace_back(std::make_pair(device_name, std::move(instance)));
+    bool add_device(const std::string &port_path) {
+        // detection
+        auto device_thread = std::make_unique<DeviceThread>(port_path);
+        {
+            std::thread thread_unit(&DeviceThread::operator(), device_thread.get());
+            thread_unit.detach();
+        }
+
+        auto status = device_thread->device_detected();
+        if (status != DeviceThread::DeviceDetected::detected)
+            return false;
+
+        {
+            std::lock_guard<std::mutex> ml(_access_mutex);
+            const auto device_name = device_thread->device_name();
+            _connected_devices.emplace_back(std::make_pair(device_name, std::move(device_thread)));
+        }
+
+        return true;
     }
 
     void remove_disconnected_devices() {

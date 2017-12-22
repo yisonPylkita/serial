@@ -29,30 +29,9 @@ void watch_port_dirs()
             start = std::chrono::high_resolution_clock::now(); // TODO: bench
             const auto port = found_ports[i];
             found_ports.erase(found_ports.begin() + i);
-            // detection
-            auto device_thread = std::make_unique<DeviceThread>(port);
-            {
-                std::thread thread_unit(&DeviceThread::operator(), device_thread.get());
-                thread_unit.detach();
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-            auto status = device_thread->device_detected();
-            if (status == DeviceThread::DeviceDetected::uninitialized) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                auto new_status = device_thread->device_detected();
-                if (new_status == DeviceThread::DeviceDetected::uninitialized ||
-                    new_status == DeviceThread::DeviceDetected::not_detected)
-                    // give up
-                    continue;
-                else if (new_status == DeviceThread::DeviceDetected::detected)
-                    status = DeviceThread::DeviceDetected::detected;
-            }
-            if (status != DeviceThread::DeviceDetected::detected)
-                continue;
 
             // register as new device
-            device_manager.add_device(std::move(device_thread));
+            device_manager.add_device(port);
             // TODO: bench
             end = std::chrono::high_resolution_clock::now();
             std::cout << "It took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()

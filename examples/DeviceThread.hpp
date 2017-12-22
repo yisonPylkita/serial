@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <condition_variable>
 #include <serial/serial.h>
 
 
@@ -46,7 +47,11 @@ struct DeviceThread
     }
 
     DeviceDetected device_detected() {
-        std::lock_guard<std::mutex> ml(_device_communication_mutex);
+        std::unique_lock<std::mutex> ml(_device_detected_mutex);
+        _device_detected_cv.wait(ml, [this] {
+            return _device_detected_state != DeviceDetected::uninitialized;
+        });
+
         return _device_detected_state;
     }
 
@@ -71,8 +76,11 @@ private:
     }
 
     void set_device_detected(DeviceDetected state) {
-        std::lock_guard<std::mutex> ml(_device_communication_mutex);
-        _device_detected_state = state;
+        {
+            std::lock_guard<std::mutex> ml(_device_detected_mutex);
+            _device_detected_state = state;
+        }
+        _device_detected_cv.notify_one();
     }
 
     void set_device_name(const std::string &name)
@@ -85,6 +93,8 @@ private:
     std::string _device_name;
     bool _is_connected = false;
     std::mutex _device_communication_mutex;
+    std::mutex _device_detected_mutex;
+    std::condition_variable _device_detected_cv;
     DeviceDetected _device_detected_state = DeviceDetected::uninitialized;
     std::unique_ptr<serial::Serial> _device_handle;
 };
