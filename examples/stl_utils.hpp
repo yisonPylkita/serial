@@ -12,6 +12,17 @@ namespace vec {
         return {lhs.begin() + how_many, lhs.end()};
     }
 
+    template <typename T>
+    std::vector<T> remove_all(const std::vector<T> &lhs, const T &val)
+    {
+        std::vector<T> result;
+        for (auto &&item : lhs)
+            if (item != val)
+                result.push_back(item);
+
+        return result;
+    }
+
     namespace operators {
 
         template <typename T>

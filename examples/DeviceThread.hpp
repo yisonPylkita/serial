@@ -66,6 +66,10 @@ struct DeviceThread
         return _is_connected;
     }
 
+    std::string get_port() const {
+        return _port;
+    }
+
 private:
     std::unique_ptr<serial::Serial> open_port(const std::string &new_port) {
         return std::make_unique<serial::Serial>(new_port);
@@ -79,6 +83,7 @@ private:
         {
             std::lock_guard<std::mutex> ml(_device_detected_mutex);
             _device_detected_state = state;
+            _is_connected = true;
         }
         _device_detected_cv.notify_one();
     }

@@ -6,7 +6,7 @@
 
 struct DeviceManager
 {
-    bool add_device(const std::string &port_path) {
+    void add_device(const std::string &port_path) {
         // detection
         auto device_thread = std::make_unique<DeviceThread>(port_path);
         {
@@ -16,21 +16,26 @@ struct DeviceManager
 
         auto status = device_thread->device_detected();
         if (status != DeviceThread::DeviceDetected::detected)
-            return false;
+            return;
 
         {
             std::lock_guard<std::mutex> ml(_access_mutex);
             const auto device_name = device_thread->device_name();
             _connected_devices.emplace_back(std::make_pair(device_name, std::move(device_thread)));
         }
-
-        return true;
     }
 
-    void remove_disconnected_devices() {
-        for (size_t i = 0; i < _connected_devices.size(); ++i)
-            if (!_connected_devices[i].second->is_connected())
+    std::vector<std::string> remove_disconnected_devices() {
+        std::vector<std::string> removed_ports;
+        for (size_t i = 0; i < _connected_devices.size(); ++i) {
+            auto device = _connected_devices[i].second.get();
+            if (!device->is_connected()) {
+                removed_ports.emplace_back(device->get_port());
                 _connected_devices.erase(_connected_devices.begin() + i);
+            }
+        }
+
+        return removed_ports;
     }
 
     DeviceThread * get_device_by_name(const std::string &device_name) {
