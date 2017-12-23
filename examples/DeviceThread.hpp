@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <memory>
 #include <functional>
 #include <string>
@@ -10,43 +11,40 @@
 
 struct DeviceThread
 {
-    using Instance = std::unique_ptr<DeviceThread>;
-
     enum class DeviceDetected {
         uninitialized,
         not_detected,
         detected
     };
 
-    explicit DeviceThread(const std::string &port) {
+    using Instance = std::unique_ptr<DeviceThread>;
+
+    //    DeviceThread(const DeviceThread &) = delete;
+    //    void operator=(const DeviceThread &) = delete;
+
+    virtual void device_loop() = 0;
+    virtual DeviceDetected device_detected() = 0;
+    virtual std::string device_name() = 0;
+    virtual bool is_connected() = 0;
+    virtual std::string get_port() const = 0;
+};
+
+template <typename DevImpl>
+struct DeviceThread_CRTP : public DeviceThread
+{
+    explicit DeviceThread_CRTP(const std::string &port) {
         _port = port;
     }
 
-//    DeviceThread(const DeviceThread &) = delete;
-//    void operator=(const DeviceThread &) = delete;
-
-    void operator()() {
-        // open port [DevImpl]
-        _device_handle = open_port(_port);
-        if (!_device_handle) {
+    void device_loop() override {
+        auto dev_impl = static_cast<DevImpl *>(this);
+        if (!dev_impl->initialize_device())
             set_device_detected(DeviceDetected::not_detected);
-            return;
-        }
-
-        // check port [DevImpl]
-        if (!check_port(_device_handle.get())) {
-            set_device_detected(DeviceDetected::not_detected);
-            return;
-        }
-
-        // set device name
-        // [DevImpl]
-        // set_device_name(DevImpl::device_name_impl);
-        set_device_name("fm30");
+        set_device_name(dev_impl->device_name_s());
         set_device_detected(DeviceDetected::detected);
     }
 
-    DeviceDetected device_detected() {
+    DeviceDetected device_detected() override {
         std::unique_lock<std::mutex> ml(_device_detected_mutex);
         _device_detected_cv.wait(ml, [this] {
             return _device_detected_state != DeviceDetected::uninitialized;
@@ -55,25 +53,22 @@ struct DeviceThread
         return _device_detected_state;
     }
 
-    std::string device_name() {
+    std::string device_name() override {
         std::lock_guard<std::mutex> ml(_device_communication_mutex);
         assert(!_device_name.empty());
         return _device_name;
     }
 
-    bool is_connected() {
+    bool is_connected() override {
         std::lock_guard<std::mutex> ml(_device_communication_mutex);
         return _is_connected;
     }
 
-    std::string get_port() const {
+    std::string get_port() const override {
         return _port;
     }
 
 private:
-    std::unique_ptr<serial::Serial> open_port(const std::string &new_port) {
-        return std::make_unique<serial::Serial>(new_port);
-    }
 
     bool check_port(serial::Serial *device) {
         return true;
@@ -101,5 +96,40 @@ private:
     std::mutex _device_detected_mutex;
     std::condition_variable _device_detected_cv;
     DeviceDetected _device_detected_state = DeviceDetected::uninitialized;
-    std::unique_ptr<serial::Serial> _device_handle;
 };
+
+namespace devices {
+struct Fm30 : public DeviceThread_CRTP<Fm30>
+{
+    static std::string device_name_s()
+    {
+        return "fm30";
+    }
+
+    explicit Fm30(const std::string &port) : DeviceThread_CRTP<Fm30>(port)
+    {
+        _port = port;
+    }
+
+
+    bool initialize_device()
+    {
+        // open port
+        _device_handle = std::make_unique<serial::Serial>(_port);
+        if (!_device_handle)
+            return false;
+
+        return check_port();
+    }
+
+private:
+    bool check_port()
+    {
+        // TODO: implement this
+        return true;
+    }
+
+    std::unique_ptr<serial::Serial> _device_handle;
+    std::string _port;
+};
+}

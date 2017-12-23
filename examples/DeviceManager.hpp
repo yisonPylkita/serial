@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <thread>
 #include "DeviceThread.hpp"
 
 
@@ -8,9 +9,9 @@ struct DeviceManager
 {
     void add_device(const std::string &port_path) {
         // detection
-        auto device_thread = std::make_unique<DeviceThread>(port_path);
+        auto device_thread = std::make_unique<devices::Fm30>(port_path);
         {
-            std::thread thread_unit(&DeviceThread::operator(), device_thread.get());
+            std::thread thread_unit(&devices::Fm30::device_loop, device_thread.get());
             thread_unit.detach();
         }
 

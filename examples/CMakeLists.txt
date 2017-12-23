@@ -13,6 +13,6 @@ target_link_libraries(serial_example PRIVATE wjwwood::serial)
 add_library(stdc++fs UNKNOWN IMPORTED)
 set_property(TARGET stdc++fs PROPERTY IMPORTED_LOCATION "/usr/lib/gcc/x86_64-linux-gnu/7/libstdc++fs.a")
 
-add_executable(new_way new_way.cpp)
+add_executable(new_way new_way.cpp stl_utils.hpp DeviceManager.hpp DeviceThread.hpp)
 target_link_libraries(new_way PRIVATE stdc++fs)
 target_link_libraries(new_way PRIVATE wjwwood::serial)

@@ -1,15 +1,13 @@
-#include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
 #include <mutex>
-#include <cassert>
 #include <functional>
+#include <iostream>
 #include <experimental/filesystem>
 #include <serial/serial.h>
 #include "stl_utils.hpp"
 #include "DeviceManager.hpp"
-#include "DeviceThread.hpp"
 
 
 using namespace vec::operators;
@@ -34,7 +32,7 @@ void watch_port_dirs()
         {
             namespace fs = std::experimental::filesystem;
             for (auto &p : std::experimental::filesystem::directory_iterator(fs::path("/dev")))
-                if (p.path().string().substr(0, 11) == "/dev/ttyUSB")
+                if (p.path().string().substr(0, 11) == "/dev/ttyUSB") // TODO: refactor it
                     found_ports.push_back(p.path().string());
 
             std::vector<std::string> new_ignored_ports;
