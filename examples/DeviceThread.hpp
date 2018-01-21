@@ -22,7 +22,6 @@ struct DeviceThread
     //    DeviceThread(const DeviceThread &) = delete;
     //    void operator=(const DeviceThread &) = delete;
 
-    virtual void device_loop() = 0;
     virtual DeviceDetected device_detected() = 0;
     virtual std::string device_name() = 0;
     virtual bool is_connected() = 0;
@@ -32,11 +31,11 @@ struct DeviceThread
 template <typename DevImpl>
 struct DeviceThread_CRTP : public DeviceThread
 {
-    explicit DeviceThread_CRTP(const std::string &port) {
-        _port = port;
+    static Instance create_instance(const std::string &port) {
+        return new DevImpl(port);
     }
 
-    void device_loop() override {
+    void device_loop() {
         auto dev_impl = static_cast<DevImpl *>(this);
         if (!dev_impl->initialize_device())
             set_device_detected(DeviceDetected::not_detected);
@@ -54,6 +53,7 @@ struct DeviceThread_CRTP : public DeviceThread
     }
 
     std::string device_name() override {
+        // TODO: is this needed ??
         std::lock_guard<std::mutex> ml(_device_communication_mutex);
         assert(!_device_name.empty());
         return _device_name;
@@ -68,8 +68,12 @@ struct DeviceThread_CRTP : public DeviceThread
         return _port;
     }
 
-private:
+protected:
+    explicit DeviceThread_CRTP(const std::string &port) {
+        _port = port;
+    }
 
+private:
     bool check_port(serial::Serial *device) {
         return true;
     }
@@ -110,7 +114,6 @@ struct Fm30 : public DeviceThread_CRTP<Fm30>
     {
         _port = port;
     }
-
 
     bool initialize_device()
     {

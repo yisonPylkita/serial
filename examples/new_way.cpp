@@ -61,6 +61,9 @@ void watch_port_dirs()
 
 int main()
 {
+    DeviceInit::create_instance_t ci = &devices::Fm30::create_instance;
+    DeviceInit::device_loop_t dl = reinterpret_cast<void(*)(DeviceThread *)>(&devices::Fm30::device_loop);
+    device_manager.add_supported_device(DeviceInit(ci, dl));
     std::thread ports_watch_thread(watch_port_dirs);
 
     // listen for API requests

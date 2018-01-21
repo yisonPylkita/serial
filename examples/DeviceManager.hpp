@@ -5,24 +5,47 @@
 #include "DeviceThread.hpp"
 
 
+struct DeviceInit {
+    typedef std::function<DeviceThread::Instance(const std::string &)> create_instance_t;
+    typedef std::function<void(DeviceThread *)> device_loop_t;
+
+    DeviceInit(create_instance_t create_instance, device_loop_t device_loop)
+    {
+        create_instance = create_instance;
+        device_loop = device_loop;
+    }
+
+    create_instance_t create_instance;
+    device_loop_t device_loop;
+};
+
 struct DeviceManager
 {
-    void add_device(const std::string &port_path) {
+    void add_supported_device(DeviceInit device_init)
+    {
+        _supported_devices.push_back(device_init);
+    }
+
+    void add_device(const std::string &port) {
         // detection
-        auto device_thread = std::make_unique<devices::Fm30>(port_path);
-        {
-            std::thread thread_unit(&devices::Fm30::device_loop, device_thread.get());
-            thread_unit.detach();
-        }
+        for (auto &&device : _supported_devices) {
+            auto device_thread = device.create_instance(port);
+            {
+                std::thread thread_unit(&device.device_loop, device_thread.get());
+                thread_unit.detach();
 
-        auto status = device_thread->device_detected();
-        if (status != DeviceThread::DeviceDetected::detected)
-            return;
+                auto status = device_thread->device_detected();
+                if (status != DeviceThread::DeviceDetected::detected)
+                    continue;
 
-        {
-            std::lock_guard<std::mutex> ml(_access_mutex);
-            const auto device_name = device_thread->device_name();
-            _connected_devices.emplace_back(std::make_pair(device_name, std::move(device_thread)));
+                {
+                    std::lock_guard<std::mutex> ml(_access_mutex);
+                    const auto device_name = device_thread->device_name();
+                    _connected_devices.emplace_back(std::make_pair(device_name, std::move(device_thread)));
+                }
+
+                break;
+            }
         }
     }
 
@@ -48,4 +71,5 @@ struct DeviceManager
 private:
     std::mutex _access_mutex;
     std::vector<std::pair<std::string, DeviceThread::Instance>> _connected_devices;
+    std::vector<DeviceInit> _supported_devices;
 };
